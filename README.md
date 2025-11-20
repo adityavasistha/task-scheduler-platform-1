@@ -41,6 +41,10 @@ A distributed task scheduling platform built with Spring Boot, Apache Flink, Kaf
 
 3. **Build and run the application**
    ```bash
+   # Use project-specific settings (recommended for corporate environments)
+   mvn -s settings.xml spring-boot:run
+   
+   # Or use default settings if you have access to Maven Central
    mvn spring-boot:run
    ```
 
@@ -53,11 +57,29 @@ A distributed task scheduling platform built with Spring Boot, Apache Flink, Kaf
 
 ## Configuration
 
+### Application Configuration
 Edit `src/main/resources/application.yml` to configure:
 - Kafka broker settings
 - Cassandra connection details
 - Task scheduler settings
 - Flink checkpointing configuration
+
+### Maven Configuration (Corporate Environments)
+If you're in a corporate environment with restricted Maven access:
+
+1. **Use project settings** (recommended):
+   ```bash
+   mvn -s settings.xml [command]
+   ```
+
+2. **All Maven commands should use the project settings**:
+   ```bash
+   mvn -s settings.xml clean compile
+   mvn -s settings.xml test
+   mvn -s settings.xml spring-boot:run
+   ```
+
+3. **IDE Configuration**: Configure your IDE to use `./settings.xml` for this project
 
 ## Architecture
 
