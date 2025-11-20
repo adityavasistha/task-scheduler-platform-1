@@ -7,6 +7,7 @@ import {
 } from '@ant-design/icons';
 import TaskForm from './components/TaskForm';
 import TaskSearch from './components/TaskSearch';
+import Chatbot from './components/Chatbot';
 
 const { Header, Content, Sider } = Layout;
 
@@ -56,6 +57,7 @@ function App() {
           </Content>
         </Layout>
       </Layout>
+      <Chatbot />
     </Layout>
   );
 }
