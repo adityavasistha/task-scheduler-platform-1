@@ -38,7 +38,7 @@ public class TaskController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Task> getTask(@PathVariable UUID id) {
+    public ResponseEntity<Task> getTask(@PathVariable String id) {
         Task task = taskService.getTask(id);
         return ResponseEntity.ok(task);
     }

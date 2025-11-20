@@ -73,7 +73,7 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
-    public Task getTask(UUID taskId) {
+    public Task getTask(String taskId) {
         return taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskId));
     }
