@@ -1,6 +1,7 @@
 package com.taskscheduler.controller;
 
 import com.taskscheduler.dto.CreateTaskRequest;
+import com.taskscheduler.dto.UpdateTaskRequest;
 import com.taskscheduler.model.Task;
 import com.taskscheduler.service.TaskService;
 import io.opentelemetry.api.trace.Span;
@@ -32,6 +33,17 @@ public class TaskController {
         
         return ResponseEntity
                 .created(URI.create("/api/tasks/" + task.getId()))
+                .body(task);
+    }
+
+    @PostMapping("/update")
+    public ResponseEntity<Task> updateTask(@Valid @RequestBody UpdateTaskRequest request) {
+        log.info("Received task updation request: {}", request.getId());
+
+        Task task = taskService.updateTask(request);
+
+        return ResponseEntity
+                .created(URI.create("/api/tasks/update" + task.getId()))
                 .body(task);
     }
 

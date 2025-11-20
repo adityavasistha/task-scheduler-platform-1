@@ -65,10 +65,16 @@ public class ScheduledTaskListener {
         List<Task> taskList = taskRepository.findAllByIdIn(taskIds);
         log.info("Fetched {} tasks from Cassandra", taskList.size());
 
+        // Create a map of task ID to TaskMetaData for easy lookup
+        java.util.Map<String, TaskMetaData> taskMetaDataMap = uniqueTasks.stream()
+                .collect(Collectors.toMap(TaskMetaData::getId, t -> t));
+
         // Process tasks in parallel
         List<CompletableFuture<Void>> futures = new ArrayList<>();
         for (Task task : taskList) {
-            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> processTask(task));
+            TaskMetaData taskMetaData = taskMetaDataMap.get(task.getId());
+            Long scheduledAt = taskMetaData != null ? taskMetaData.getScheduledAt() : null;
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> processTask(task, scheduledAt));
             futures.add(future);
         }
 
@@ -124,12 +130,13 @@ public class ScheduledTaskListener {
         */
     }
 
-    private void processTask(Task task) {
+    private void processTask(Task task, Long scheduledAt) {
         try {
-            log.info("Processing task: {} with status: {}", task.getId(), task.getStatus());
+            log.info("Processing task: {} with status: {} and scheduledAt from metadata: {}", 
+                    task.getId(), task.getStatus(), scheduledAt);
 
             // Check if status is SCHEDULED
-            if ("CREATED".equals(task.getStatus())) {
+            if ("CREATED".equals(task.getStatus()) && task.getScheduledAt().equals(scheduledAt)) {
                 // Publish message to Kafka
                 kafkaTemplate.send(deliveredTasksTopic, task.getId(), task);
                 log.info("Published task {} to Kafka topic: {}", task.getId(), deliveredTasksTopic);

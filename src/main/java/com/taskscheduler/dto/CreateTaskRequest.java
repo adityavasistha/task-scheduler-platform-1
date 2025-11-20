@@ -10,7 +10,7 @@ public class CreateTaskRequest {
     private String name;
     private String description;
     private String cronExpression;
-    private Map<String, Object> parameters;
+    private Map<String, String> parameters;
     private String createdBy;
     private String assignedTo;
     private String priority = "MEDIUM";  // HIGH, MEDIUM, LOW
@@ -31,4 +31,6 @@ public class CreateTaskRequest {
     private Long scheduledAt;
 
     private String status;
+
+    private Integer updateCount;
 }
