@@ -1,6 +1,7 @@
 package com.taskscheduler.service;
 
 import com.taskscheduler.dto.CreateTaskRequest;
+import com.taskscheduler.dto.UpdateTaskRequest;
 import com.taskscheduler.model.Task;
 import com.taskscheduler.model.TaskMetaData;
 import com.taskscheduler.repository.TaskMetaDataRepository;
@@ -42,7 +43,7 @@ public class TaskService {
     @Counted(value = "taskscheduler_tasks_created_total", description = "Total number of tasks created")
     public Task createTask(CreateTaskRequest request) {
         Task task = new Task();
-        task.setId(UUID.randomUUID().toString());
+        task.setId(request.getId());
         task.setStatus("CREATED");
         task.setCreatedAt(Instant.now());
         task.setUpdatedAt(Instant.now());
@@ -99,6 +100,43 @@ public class TaskService {
         }
 
         return savedTask;
+    }
+
+    @Transactional
+    @Timed(value = "taskscheduler_database_update_duration_seconds", description = "Time taken to Update tasks to database")
+    @Counted(value = "taskscheduler_tasks_updated_total", description = "Total number of tasks updated")
+    public Task updateTask(UpdateTaskRequest request) {
+        log.info("Updating task with id: {}", request.getId());
+
+        // Fetch existing task from Cassandra
+        Task existingTask = taskRepository.findById(request.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Bad Request: Task not found with id: " + request.getId()));
+        
+        // Update scheduledAt attribute
+            existingTask.setScheduledAt(request.getScheduledAt());
+        
+        // Update timestamp
+        existingTask.setUpdatedAt(Instant.now());
+        
+        // Build CreateTaskRequest from updated task and call createTask
+        CreateTaskRequest updatedRequest = new CreateTaskRequest();
+        updatedRequest.setId(existingTask.getId());
+        updatedRequest.setTenant(existingTask.getTenant());
+        updatedRequest.setPayload(existingTask.getPayload());
+        updatedRequest.setScheduledAt(existingTask.getScheduledAt());
+        updatedRequest.setStatus(existingTask.getStatus());
+        updatedRequest.setCreatedBy(existingTask.getCreatedBy());
+        updatedRequest.setAssignedTo(existingTask.getAssignedTo());
+        updatedRequest.setPriority(existingTask.getPriority());
+        updatedRequest.setMaxRetries(existingTask.getMaxRetries());
+        updatedRequest.setRetryDelayMs(existingTask.getRetryDelayMs());
+        updatedRequest.setParameters(existingTask.getParameters());
+        
+        // Call createTask which will handle Kafka publishing and Cassandra save
+        Task updatedTask = createTask(updatedRequest);
+        log.info("Task updated via createTask: {}", updatedTask.getId());
+        
+        return updatedTask;
     }
 
     @Transactional(readOnly = true)
