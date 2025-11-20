@@ -27,7 +27,43 @@ spring:
     local-datacenter: datacenter1
     schema-action: NONE
 
-# Kafka Topics (Basic Flow Only)
+# Management and Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info
+  endpoint:
+    health:
+      show-details: always
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  metrics:
+    distribution:
+      percentiles-histogram:
+        "[http.server.requests]": true
+      slo:
+        "[http.server.requests]": 50ms,100ms,200ms,500ms
+    tags:
+      application: ${spring.application.name}
+
+# Custom Application Configuration
+# Flink Configuration
+flink:
+  job:
+    name: task-scheduler-job
+  checkpoint:
+    interval: 10000  # 10 seconds
+    timeout: 60000   # 1 minute
+    min-pause: 5000  # 5 seconds
+
+# Kafka Topics
 kafka:
   topics:
     task-requests: task-requests
