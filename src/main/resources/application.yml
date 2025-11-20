@@ -23,7 +23,7 @@ spring:
   cassandra:
     contact-points: localhost
     port: 9042
-    keyspace-name: taskscheduler
+    keyspace-name: taskschedulers
     local-datacenter: datacenter1
     schema-action: NONE
 
@@ -66,17 +66,4 @@ flink:
 # Kafka Topics
 kafka:
   topics:
-    task-events: task-events
-    scheduled-tasks: scheduled-tasks
-    task-execution: task-execution
     task-requests: task-requests
-    task-responses: task-responses
-    workflow-events: workflow-events
-    task-notifications: task-notifications
-
-# Task Scheduler Configuration
-task:
-  scheduler:
-    worker-threads: 4
-    max-retry-attempts: 3
-    retry-delay: 5000  # 5 seconds
