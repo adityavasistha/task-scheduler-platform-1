@@ -34,13 +34,13 @@ public class ScheduledTaskListener {
     }
 
     @KafkaListener(
-            topics = "${kafka.topics.scheduled-tasks}", 
+            topics = "${kafka.topics.scheduled-tasks}",
             groupId = "task-scheduler-platform",
             containerFactory = "batchKafkaListenerContainerFactory"
     )
     public void handleScheduledTask(List<TaskMetaData> tasks) {
         log.info("Received {} scheduled tasks from Flink", tasks.size());
-        
+
         // Remove duplicates based on task id only
         List<TaskMetaData> uniqueTasks = tasks.stream()
                 .collect(Collectors.toMap(
@@ -51,37 +51,37 @@ public class ScheduledTaskListener {
                 .values()
                 .stream()
                 .collect(Collectors.toList());
-        
-        log.info("Processing {} unique tasks (removed {} duplicates)", 
+
+        log.info("Processing {} unique tasks (removed {} duplicates)",
                 uniqueTasks.size(), tasks.size() - uniqueTasks.size());
-        
+
         // Extract task IDs for batch fetch
         List<String> taskIds = uniqueTasks.stream()
                 .map(TaskMetaData::getId)
                 .collect(Collectors.toList());
-        
+
         // Batch fetch all tasks from Cassandra using IN clause
         log.info("Batch fetching {} tasks from Cassandra", taskIds.size());
         List<Task> taskList = taskRepository.findAllByIdIn(taskIds);
         log.info("Fetched {} tasks from Cassandra", taskList.size());
-        
+
         // Process tasks in parallel
         List<CompletableFuture<Void>> futures = new ArrayList<>();
         for (Task task : taskList) {
             CompletableFuture<Void> future = CompletableFuture.runAsync(() -> processTask(task));
             futures.add(future);
         }
-        
+
         // Wait for all futures to complete
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-        
+
         log.info("Completed processing {} tasks", taskList.size());
-        
+
         // COMMENTED OUT: Batch update approach - keeping for reference
         /*
         // Track successfully processed tasks for batch update
         List<Task> successfullyProcessedTasks = new ArrayList<>();
-        
+
         // Process tasks in parallel and track results
         // Create a list to pair tasks with their futures
         List<CompletableFuture<Boolean>> futures = new ArrayList<>();
@@ -96,10 +96,10 @@ public class ScheduledTaskListener {
                     });
             futures.add(future);
         }
-        
+
         // Wait for all futures to complete
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-        
+
         // Collect successful tasks (all futures are already complete at this point)
         for (int i = 0; i < taskList.size(); i++) {
             try {
@@ -111,29 +111,29 @@ public class ScheduledTaskListener {
                 log.error("Error collecting result for task {}: {}", taskList.get(i).getId(), e.getMessage(), e);
             }
         }
-        
+
         // Batch update only successfully processed tasks
         if (!successfullyProcessedTasks.isEmpty()) {
             log.info("Batch updating {} successfully processed tasks in Cassandra", successfullyProcessedTasks.size());
             taskRepository.saveAll(successfullyProcessedTasks);
-            log.info("Batch update complete. {} tasks updated, {} tasks failed", 
+            log.info("Batch update complete. {} tasks updated, {} tasks failed",
                     successfullyProcessedTasks.size(), taskList.size() - successfullyProcessedTasks.size());
         } else {
             log.warn("No tasks were successfully processed - skipping batch update");
         }
         */
     }
-    
+
     private void processTask(Task task) {
         try {
             log.info("Processing task: {} with status: {}", task.getId(), task.getStatus());
-            
+
             // Check if status is SCHEDULED
             if ("SCHEDULED".equals(task.getStatus())) {
                 // Publish message to Kafka
                 kafkaTemplate.send(deliveredTasksTopic, task.getId(), task);
                 log.info("Published task {} to Kafka topic: {}", task.getId(), deliveredTasksTopic);
-                
+
                 // Update status to DELIVERED and save immediately
                 task.setStatus("DELIVERED");
                 taskRepository.save(task);

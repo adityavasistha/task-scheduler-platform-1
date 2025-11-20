@@ -28,8 +28,76 @@ spring:
     local-datacenter: datacenter1
     schema-action: NONE
 
-# Kafka Topics (Basic Flow Only)
+# Management and Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info
+  endpoint:
+    health:
+      show-details: always
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  metrics:
+    distribution:
+      percentiles-histogram:
+        "[http.server.requests]": true
+      slo:
+        "[http.server.requests]": 50ms,100ms,200ms,500ms
+    tags:
+      application: ${spring.application.name}
+
+# Custom Application Configuration
+# Flink Configuration
+flink:
+  job:
+    name: task-scheduler-job
+  checkpoint:
+    interval: 10000  # 10 seconds
+    timeout: 60000   # 1 minute
+    min-pause: 5000  # 5 seconds
+
+# Kafka Topics
 kafka:
   topics:
     task-requests: task-requests
     scheduled-tasks: scheduled-tasks
+
+# OpenTelemetry / Jaeger Configuration
+otel:
+  service:
+    name: task-scheduler-platform
+  traces:
+    exporter: otlp
+  exporter:
+    otlp:
+      endpoint: http://localhost:4317  # Jaeger OTLP gRPC endpoint
+  metrics:
+    exporter: none
+  logs:
+    exporter: none
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0  # Sample 100% of requests (use 0.1 for 10% in production)
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+# Logging Configuration - Include Trace IDs
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - [TraceID: %X{trace_id:-N/A}] [SpanID: %X{span_id:-N/A}] - %msg%n"
+  level:
+    root: INFO
+    com.taskscheduler: DEBUG
+    io.opentelemetry: INFO
