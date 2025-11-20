@@ -64,6 +64,6 @@ public class TaskController {
                 now.getSecond(),
                 millis);
         
-        return ResponseEntity.ok(String.format("Timestamp String: %s\nThis will be stored directly in Cassandra!", timestampId));
+        return ResponseEntity.ok(String.format("Timestamp String: %s%nThis will be stored directly in Cassandra!", timestampId));
     }
 }

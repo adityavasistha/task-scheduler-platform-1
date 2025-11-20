@@ -9,7 +9,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class ScheduledTaskListener {
 
-    @KafkaListener(topics = "${kafka.topics.scheduled-tasks}", groupId = "task-scheduler-platform")
+    // Removed Kafka listener since Flink no longer sends acknowledgments back
+    // @KafkaListener(topics = "${kafka.topics.scheduled-tasks}", groupId = "task-scheduler-platform")
     public void handleScheduledTask(Task task) {
         log.info("Received scheduled task from Flink: {} with status: {}", task.getId(), task.getStatus());
         log.info("Task details: name={}, description={}", task.getName(), task.getDescription());
