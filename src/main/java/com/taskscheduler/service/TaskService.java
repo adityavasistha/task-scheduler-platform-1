@@ -9,10 +9,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -33,38 +30,29 @@ public class TaskService {
 
     @Transactional
     public Task createTask(CreateTaskRequest request) {
-        log.info("Creating task: {}", request.getName());
+        log.info("Creating task with id: {}", request.getId());
         
         Task task = new Task();
-        task.setId(UUID.randomUUID()); // Simple random UUID
-        task.setName(request.getName());
-        task.setDescription(request.getDescription());
-        task.setCronExpression(request.getCronExpression());
-        task.setStatus("CREATED");
-        task.setCreatedAt(Instant.now());
-        task.setUpdatedAt(Instant.now());
-        task.setCreatedBy(request.getCreatedBy());
-        task.setAssignedTo(request.getAssignedTo());
-        task.setMaxRetries(request.getMaxRetries());
-        task.setRetryDelayMs(request.getRetryDelayMs());
-        task.setCurrentRetries(0);
-        
-        // Convert Map<String, Object> to Map<String, String> for Cassandra compatibility
-        if (request.getParameters() != null) {
-            Map<String, String> stringParameters = new HashMap<>();
-            for (Map.Entry<String, Object> entry : request.getParameters().entrySet()) {
-                stringParameters.put(entry.getKey(), entry.getValue().toString());
-            }
-            task.setParameters(stringParameters);
-        }
+        task.setId(request.getId());
+        task.setTenant(request.getTenant());
+        task.setPayload(request.getPayload());
+        task.setScheduledAt(request.getScheduledAt());
+        task.setStatus(request.getStatus());
         
         // Save to Cassandra
         Task savedTask = taskRepository.save(task);
         log.info("Task saved to Cassandra: {}", savedTask.getId());
+
+        // Calculate 30 days ago in milliseconds
+        long thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000);
         
-        // Send directly to task-requests topic for Flink
-        kafkaTemplate.send(taskRequestsTopic, savedTask.getId().toString(), savedTask);
-        log.info("Task sent to task-requests topic: {}", savedTask.getId());
+        // Send to task-requests topic for Flink only if scheduledAt is within 30 days
+        if (request.getScheduledAt() != null && request.getScheduledAt() >= thirtyDaysAgo) {
+            kafkaTemplate.send(taskRequestsTopic, savedTask.getId(), savedTask);
+            log.info("Task sent to task-requests topic: {}", savedTask.getId());
+        } else {
+            log.info("Task not sent to Kafka - scheduledAt is more than 30 days old or null: {}", savedTask.getId());
+        }
         
         return savedTask;
     }
@@ -78,15 +66,13 @@ public class TaskService {
     @Transactional(readOnly = true)
     public List<Task> getAllTasksSortedByTime() {
         List<Task> tasks = taskRepository.findAll();
-        // Sort by created_at (natural timestamp ordering)
+        // Sort by scheduledAt (DESC order - newest first)
         tasks.sort((t1, t2) -> {
-            if (t1.getCreatedAt() == null && t2.getCreatedAt() == null) return 0;
-            if (t1.getCreatedAt() == null) return 1;
-            if (t2.getCreatedAt() == null) return -1;
-            return t2.getCreatedAt().compareTo(t1.getCreatedAt()); // DESC order (newest first)
+            if (t1.getScheduledAt() == null && t2.getScheduledAt() == null) return 0;
+            if (t1.getScheduledAt() == null) return 1;
+            if (t2.getScheduledAt() == null) return -1;
+            return Long.compare(t2.getScheduledAt(), t1.getScheduledAt());
         });
         return tasks;
     }
-
-
 }
